@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+
+# Data & Models (we don't want to version large files)
+data/
+datasets/
+models/
+results/
+*.h5
+*.keras
+
+# OS specific
+.DS_Store
