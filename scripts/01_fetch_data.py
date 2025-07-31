@@ -2,9 +2,7 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import urllib.request
 import zipfile
-import io
 
 def parse_ts_file(content):
     """Parses the content of a .ts file into numpy arrays."""
@@ -23,39 +21,45 @@ def parse_ts_file(content):
         if not data_started or line.startswith("@"):
             continue
 
+        # Handle potential empty lines or formatting issues in .ts files
         parts = line.split(':')
-        series_data = [float(p) for p in parts[0].split(',') if p]
-        label = parts[-1]
-        
+        if len(parts) < 2:
+            continue
+            
+        series_data_str = parts[0].split(',')
+        # Ensure that we only try to convert non-empty strings to float
+        series_data = [float(p) for p in series_data_str if p]
+
         all_series_data.append(series_data)
-        all_labels.append(label)
+        all_labels.append(parts[-1])
 
     X = pd.DataFrame(all_series_data).to_numpy()
     y = pd.Series(all_labels).to_numpy()
     return X, y
 
-def fetch_and_save_datasets():
+def process_local_datasets():
     """
-    Downloads, extracts, and parses UCR datasets manually.
+    Processes locally downloaded UCR datasets from the 'downloads' folder.
     """
     DATASET_NAMES = ["ECG200", "GunPoint", "DistalPhalanxOutlineAgeGroup", "CricketX"]
-    BASE_URL = "http://www.timeseriesclassification.com/Downloads/"
     
+    input_dir = Path("downloads")
     output_dir = Path("data")
     output_dir.mkdir(exist_ok=True)
     
-    print("🚀 Starting robust data download and processing...\n")
+    print("🚀 Starting local data processing...\n")
     
     for name in DATASET_NAMES:
-        print(f"Fetching '{name}'...")
-        try:
-            url = f"{BASE_URL}{name}.zip"
-            # Download the zip file into memory
-            with urllib.request.urlopen(url) as response:
-                zip_in_memory = io.BytesIO(response.read())
+        print(f"Processing '{name}'...")
+        zip_path = input_dir / f"{name}.zip"
 
-            # Extract and parse train/test files from the zip
-            with zipfile.ZipFile(zip_in_memory) as zf:
+        if not zip_path.exists():
+            print(f"❌ ERROR: Cannot find file {zip_path}. Please make sure it's downloaded.")
+            continue
+            
+        try:
+            # Extract and parse train/test files from the local zip
+            with zipfile.ZipFile(zip_path) as zf:
                 train_content = zf.read(f"{name}_TRAIN.ts").decode('utf-8')
                 test_content = zf.read(f"{name}_TEST.ts").decode('utf-8')
             
@@ -73,7 +77,7 @@ def fetch_and_save_datasets():
                 X_test=X_test, y_test=y_test
             )
             
-            print(f"✅ Saved '{name}' to {output_file}")
+            print(f"✅ Saved processed data to {output_file}")
             print(f"   Train shapes: X={X_train.shape}, y={y_train.shape}")
             print(f"   Test shapes:  X={X_test.shape}, y={y_test.shape}\n")
 
@@ -83,4 +87,4 @@ def fetch_and_save_datasets():
     print("All datasets have been successfully processed.")
 
 if __name__ == "__main__":
-    fetch_and_save_datasets()
+    process_local_datasets()
