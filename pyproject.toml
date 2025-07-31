@@ -5,11 +5,13 @@ description = ""
 authors = ["syntax2 <akadian135@gmail.com>"]
 readme = "README.md"
 
+
 [tool.poetry.dependencies]
-python = "^3.10"
-pandas = "^2.3.1"
-matplotlib = "^3.10.3"
-jupyter = "^1.1.1"
+python = "^3.12"
+numpy = "*"
+pandas = "*"
+matplotlib = "*"
+jupyter = "*"
 
 
 [build-system]
