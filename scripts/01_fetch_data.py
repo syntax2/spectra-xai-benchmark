@@ -1,47 +1,49 @@
 # scripts/01_fetch_data.py
 import numpy as np
 from pathlib import Path
-from tsai.basics import get_UCR_data
+from sktime.datasets import load_UCR_UEA_dataset
 
 def fetch_and_save_datasets():
     """
-    Fetches the recommended datasets from the UCR archive
+    Fetches the recommended datasets from the UCR archive using sktime
     and saves them locally as compressed .npz files.
     """
-    # Define the datasets we finalized in the previous step
     DATASET_NAMES = ["ECG200", "GunPoint", "DistalPhalanxOutlineAgeGroup", "CricketX"]
-    
-    # Define the output directory (./data/), creating it if it doesn't exist
-    # This directory is in our .gitignore
     output_dir = Path("data")
     output_dir.mkdir(exist_ok=True)
     
-    print("🚀 Starting dataset download and processing...\n")
+    print("🚀 Starting dataset download and processing with sktime...\n")
     
     for name in DATASET_NAMES:
         print(f"Fetching '{name}'...")
-        
         try:
-            # Use tsai to download and load the data.
-            # parent_dir specifies where the raw .ts files will be cached.
-            X_train, y_train, X_test, y_test = get_UCR_data(name, parent_dir=output_dir, verbose=False)
-            
-            # Define the final output file path
+            # sktime loads splits separately. We'll load train and test.
+            # It returns pandas objects, which we'll convert to numpy arrays.
+            X_train_pd, y_train = load_UCR_UEA_dataset(name, split="train", return_X_y=True)
+            X_test_pd, y_test = load_UCR_UEA_dataset(name, split="test", return_X_y=True)
+
+            # Convert pandas DataFrames to NumPy arrays
+            # sktime data can have multiple dimensions, we select the first (dim_0)
+            # and stack the series to get the correct (n_samples, n_timesteps) shape.
+            X_train = np.stack(X_train_pd['dim_0'].to_numpy())
+            X_test = np.stack(X_test_pd['dim_0'].to_numpy())
+
+            # Add a channel dimension for deep learning models (n_samples, n_timesteps, 1)
+            X_train = np.expand_dims(X_train, axis=-1)
+            X_test = np.expand_dims(X_test, axis=-1)
+
             output_file = output_dir / f"{name}.npz"
             
-            # Save all arrays into a single compressed .npz file for efficient storage
             np.savez_compressed(
                 output_file,
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test
+                X_train=X_train, y_train=y_train,
+                X_test=X_test, y_test=y_test
             )
             
             print(f"✅ Saved '{name}' to {output_file}")
             print(f"   Train shapes: X={X_train.shape}, y={y_train.shape}")
             print(f"   Test shapes:  X={X_test.shape}, y={y_test.shape}\n")
-        
+
         except Exception as e:
             print(f"❌ Failed to download or process {name}. Error: {e}\n")
             
